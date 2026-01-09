@@ -1,3 +1,4 @@
+import re
 def analyze_theophoric_elements(data, gods_list):
     """
     Untersucht eine Liste von Namen auf Götter-Elemente.
@@ -22,3 +23,56 @@ def analyze_theophoric_elements(data, gods_list):
                 'position': 'Anfang' if search_name.startswith(found_gods[0].lower().replace('š', 's')) else "Ende/Mitte"
             })
     return results
+
+def isolate_stems(name, detected_gods):
+    """
+    Isoliert den Wortstamm und entfernt radikal Sonderzeichen, 
+    Bindestriche und grammatikalische Endungen.
+    """
+    stem = name.lower()
+    for god in detected_gods:
+        stem = stem.replace(god.lower(), "").replace("-", "")
+        
+        stem = re.sub(r'[^a-zšḫṣṭ]', ' ', stem)
+        
+        parts = stem.split()
+        if not parts:
+            return "Unebkannt"
+        
+        main_stem = max(parts, key=len)
+        
+        if len(main_stem) <= 2:
+            return "Unebkannt"
+        
+    return main_stem.capitalize()
+
+def split_stem_suffix(stem):
+    """
+    Trennt den Endvokal vom restlichen Stamm.
+    Beispiel: 'Burna' -> ('Burn', 'a'), 'Nazi' -> ('Naz', 'i')
+    """
+    if not stem or len(stem) < 3:
+        return stem, ""
+    
+    vowels = "aeiouyš"
+    
+    if stem[-1].lower() in "aeiou":
+        root = stem[:-1]
+        suffix = stem [-1]
+        return root,suffix
+    
+    return stem, ""
+
+def get_consonant_clusters(text):
+    """
+    Extrahiert alle Paare von aufeinanderfolgenden Konsonanten.
+    """
+    vowels ="aeiou"
+    
+    clusters = re.findall(r'[^aeiou]{2,}', text.lower())
+    return clusters
+
+def get_root_vowel(root):
+    """Extrahiert den letzten Vokal innerhalb der Wurzel."""
+    vowels = re.findall(r'[aeiou]', root.lower())
+    return vowels[-1] if vowels else None

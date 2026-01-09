@@ -1,5 +1,6 @@
 from src.data_handler import load_database, save_database
-from src.linguistics import analyze_theophoric_elements
+from src.linguistics import analyze_theophoric_elements, isolate_stems, split_stem_suffix, get_consonant_clusters, get_root_vowel
+
 
 def main():
     print("--- Start der Analyse ---")
@@ -30,9 +31,102 @@ def main():
         if match:
             entry['detected_gods'] = match['gods']
             entry['god_position'] = match['position']
+            entry['isolated_stem'] = isolate_stems(name, match['gods'])
+        else:
+            entry ['isolated_stem'] = None 
     
     save_database(db, "data/kassite_names_db_enriched.json")
     print(f"Angereicherte Datenbank mit {len(results)} Götter-Tags gespeichert.")
+    
+    save_database(db, "data/kassite_names_db_enriched.json")
+    print(f"Angereicherte Datenbank gespeichert.")
+
+    
+    from collections import Counter
+    
+    
+    stems = [
+        entry.get('isolated_stem') 
+        for entry in db 
+        if entry.get('isolated_stem') and entry.get('isolated_stem') not in ["Unbekannt", "Unebkannt"]
+    ]
+    
+    
+    stem_counts = Counter(stems)
+    top_stems = stem_counts.most_common(10)
+    
+    
+    print("\n--- Top 10 der isolierten Wortstämme ---")
+    print(f"{'Stamm':<15} | {'Häufigkeit'}")
+    print("-" * 30)
+    for stem, count in top_stems:
+        print(f"{stem:<15} | {count}") 
+        
+    morphology_results = []
+
+    suffixes = []
+    for entry in db: 
+        stem = entry.get('isolated_stem')
+        if stem and stem not in ["Unbekannt", "Unebkannt"]:
+            root, suffix = split_stem_suffix(stem)
+            entry['root'] = root
+            entry['suffix'] = suffix
+            if suffix:
+                suffixes.append(suffix)
+
+    suffix_counts = Counter(suffixes)
+    print("\n--- Analyse der Stamm-Endungen (Suffixe) ---")
+    for suff, count in suffix_counts.most_common():
+        print(f"Endung -{suff}: {count} Treffer")
+    
+    roots = []
+    for entry in db:
+        root = entry.get('root')
+        if root and root not in ["Unbekannt", "Unebkannt"]:
+            roots.append(root)
+    
+    root_counts = Counter(roots)
+    
+    print("\n--- Top 10 der reinen Wortwurzeln (ohne Vokal) ---")
+    print(f"{'Wurzel':<15} | {'Häufigkeit'}")
+    print("-" * 30)
+    for root, count in root_counts.most_common(10):
+        print(f"{root:<15} | {count}")
+    
+    all_clusters = []
+    for entry in db:
+        root = entry.get('root')
+        if root:
+            clusters = get_consonant_clusters(root)
+            all_clusters.extend(clusters)
+    
+    cluster_counts = Counter(all_clusters)
+    
+    print("\n--- Top 10 der Konsonanten-Cluster (Phonologie) ---")
+    print(f"{'Cluster':<15} | {'Häufigkeit'}")
+    print("-" * 30)
+    for cluster, count in cluster_counts.most_common(10):
+        print(f"{cluster:<15} | {count}")
+    
+    vowel_pairs = []
+    for entry in db:
+        root = entry.get('root')
+        suffix = entry.get('suffix')
+        
+        if root and suffix:
+            root_vowel = get_root_vowel(root)
+            if root_vowel:
+                
+                vowel_pairs.append(f"{root_vowel} -> {suffix}")
+    
+    vowel_harm_counts = Counter(vowel_pairs)
+    
+    print("\n--- Vokal-Korrelation (Wurzel -> Suffix) ---")
+    print(f"{'Muster':<15} | {'Häufigkeit'}")
+    print("-" * 30)
+    for pattern, count in vowel_harm_counts.most_common():
+        print(f"{pattern:<15} | {count}")
+
 
 if __name__ == "__main__":
     main()
